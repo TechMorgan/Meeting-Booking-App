@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Set global font and reset default body layout */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  background-color: #f9fafb; /* Tailwind's default gray-50 */
+  color: #1f2937; /* Tailwind's gray-800 */
+}
+
+/* Optional anchor styling */
+a {
+  @apply text-blue-600 hover:underline;
+}
