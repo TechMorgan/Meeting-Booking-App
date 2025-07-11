@@ -85,6 +85,12 @@ Create a new meeting using the dashboard.
 
 View your meetings, edit or cancel as needed.
 
+Sample accounts existing in the Web app:
+
+Employee login - username: qwerty | Password: 123456
+
+Admin login - username: admin1 | password: qwerty
+
 ## 📡 API Endpoints / Architecture
 Base URL: https://anudip-production.up.railway.app/api
 
