@@ -1,6 +1,6 @@
 # 📅 Meeting Room Booking App
 
-MeetingBook is a full-stack web application that allows users to schedule, manage, and track meetings efficiently. It supports user authentication, secure data handling, and CRUD operations for meeting events.
+Meeting Room Booking is a full-stack web application that allows users to schedule, manage, and track meetings efficiently. It supports user authentication, secure data handling, and CRUD operations for meeting events.
 
 ---
 
