@@ -46,7 +46,7 @@ export default function Navbar() {
             to={dashboardRoute}
             className="text-xl font-bold tracking-wide text-gray-800 hover:text-gray-600"
           >
-            📅 Meeting Room App
+            📅 Meeting Room Booking App
           </Link>
         </div>
 
