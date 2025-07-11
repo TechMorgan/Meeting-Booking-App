@@ -115,3 +115,4 @@ Base URL: https://anudip-production.up.railway.app/api
 | GET    | `/bookings`     | Get bookings (admin gets all, employee gets own) |
 | DELETE | `/bookings/:id` | Cancel a booking (by owner or admin)             |
 
+## Project is Live at https://meetingbookapp.vercel.app/
