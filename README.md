@@ -59,7 +59,7 @@ This is ideal for small teams or individuals who want a streamlined solution for
 
 ### ✅ Prerequisites
 
-- Node.js (v16 or later)
+- Node.js
 - Git
 
 ---
@@ -87,9 +87,9 @@ View your meetings, edit or cancel as needed.
 
 Sample accounts existing in the Web app:
 
-Employee login - username: qwerty | Password: 123456
+Employee login - username: qwerty / Password: 123456
 
-Admin login - username: admin1 | password: qwerty
+Admin login - username: admin1 / Password: qwerty
 
 ## 📡 API Endpoints / Architecture
 Base URL: https://anudip-production.up.railway.app/api
