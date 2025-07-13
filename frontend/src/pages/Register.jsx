@@ -23,16 +23,14 @@ export default function Register() {
       err.response.data &&
       typeof err.response.data.message === 'string'
     ) {
-      // Handle specific backend message
+      // Only handle email-specific error
       if (err.response.data.message.toLowerCase().includes('email')) {
         setMessage('❌ This email is already in use. Please try another one.');
-      } else if (err.response.data.message.toLowerCase().includes('username')) {
-        setMessage('❌ This username is already taken. Please try another one.');
       } else {
         setMessage(`❌ ${err.response.data.message}`);
       }
     } else {
-      setMessage('❌ Registration failed. Try a different username/email.');
+      setMessage('❌ Registration failed. Try again later.');
     }
   }
 };
