@@ -71,7 +71,7 @@ Open a terminal and run the following commands one by one:
 ```
 git clone https://github.com/TechMorgan/Meeting-Booking-App.git
 
-cd frontend
+cd Meeting-Booking-App/frontend
 npm install
 
 npm run dev
