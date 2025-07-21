@@ -10,7 +10,7 @@ export default function Bookings() {
   const [deleteMode, setDeleteMode] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (!token) return setError('No token found');
 
     const { role } = jwtDecode(token);

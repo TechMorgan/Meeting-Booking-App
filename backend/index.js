@@ -1,25 +1,26 @@
-// meeting-room-backend/index.js
-
 const express = require('express');
 const mysql = require('mysql2');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
-// Allow only your frontend origin
-app.use(cors({
+const corsOptions = {
   origin: ['https://meetingbookapp.vercel.app', 'http://localhost:5173'],
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 
-// Handle preflight requests
-app.options('/*all', cors());
+app.use(cors(corsOptions));
+app.options('/{*any}', cors(corsOptions));
 
-// MySQL Connection
+// DB
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -33,18 +34,35 @@ db.connect(err => {
   console.log('✅ Connected to MySQL');
 });
 
-// Middleware to verify JWT
+// TOKEN UTILS
+function generateAccessToken(user) {
+  return jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '15m' });
+}
+
+function generateRefreshToken(user) {
+  return jwt.sign(user, process.env.REFRESH_SECRET, { expiresIn: '7d' });
+}
+
+// Middleware
 function verifyToken(req, res, next) {
-  const token = req.headers['authorization'];
+  let token = req.headers['authorization'];
+
+  // Handle "Bearer <token>" format
+  if (token && token.startsWith('Bearer ')) {
+    token = token.slice(7); // remove "Bearer "
+  }
+
   if (!token) return res.status(401).send('Token required');
+
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).send('Invalid token');
+    if (err) return res.status(403).send('Invalid or expired token');
     req.user = decoded;
     next();
   });
 }
 
-// User Registration
+
+// REGISTER
 app.post('/api/register', async (req, res) => {
   const { username, password, email, role } = req.body;
   try {
@@ -57,12 +75,12 @@ app.post('/api/register', async (req, res) => {
         res.send('User registered');
       }
     );
-  } catch (err) {
+  } catch {
     res.status(500).send('Registration failed');
   }
 });
 
-// User Login
+// LOGIN (shared for employee)
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   db.query('SELECT * FROM Users WHERE username = ?', [username], async (err, results) => {
@@ -70,14 +88,84 @@ app.post('/api/login', (req, res) => {
     const user = results[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).send('Invalid credentials');
-    const token = jwt.sign(
-	  { id: user.id, username: user.username, role: user.role, email: user.email },
-	  process.env.JWT_SECRET
-	);
 
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    const userPayload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      email: user.email
+    };
+
+    const accessToken = generateAccessToken(userPayload);
+    const refreshToken = generateRefreshToken(userPayload);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.json({ accessToken, user: userPayload });
   });
 });
+
+// ADMIN LOGIN (strictly check role)
+app.post('/api/admin-login', (req, res) => {
+  const { username, password } = req.body;
+  db.query('SELECT * FROM Users WHERE username = ?', [username], async (err, results) => {
+    if (err || results.length === 0) return res.status(401).send('Invalid credentials');
+    const user = results[0];
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).send('Invalid credentials');
+
+    if (user.role !== 'Admin') return res.status(403).send('Not an admin');
+
+    const userPayload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      email: user.email
+    };
+
+    const accessToken = generateAccessToken(userPayload);
+    const refreshToken = generateRefreshToken(userPayload);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+     secure: true,
+      sameSite: 'Lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.json({ accessToken, user: userPayload });
+  });
+});
+
+// Refresh Token
+app.post('/api/refresh-token', (req, res) => {
+  console.log('🍪 Raw cookies:', req.headers.cookie);
+  console.log('🍪 Parsed cookies:', req.cookies);
+  console.log('🔑 Refresh token:', req.cookies.refreshToken);
+  
+  const token = req.cookies.refreshToken;
+  if (!token) return res.status(401).send('Refresh token missing');
+
+  jwt.verify(token, process.env.REFRESH_SECRET, (err, user) => {
+    if (err) return res.status(403).send('Invalid refresh token');
+
+    const accessToken = generateAccessToken({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      email: user.email
+    });
+
+    res.json({ accessToken });
+  });
+});
+
 
 // Get all rooms
 app.get('/api/rooms', verifyToken, (req, res) => {
@@ -222,6 +310,15 @@ app.delete('/api/rooms/:id', verifyToken, (req, res) => {
     if (err) return res.status(500).send(err);
     res.send('Room deleted');
   });
+});
+
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    sameSite: 'None',
+    secure: true,
+  });
+  res.sendStatus(200);
 });
 
 const PORT = process.env.PORT || 5000;

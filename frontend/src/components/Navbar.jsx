@@ -8,7 +8,7 @@ export default function Navbar() {
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef(null);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   let user = null;
 
   try {
@@ -33,10 +33,22 @@ export default function Navbar() {
   const hideNavbar = ['/', '/login', '/register', '/admin-login', '/select-login'].includes(location.pathname);
   if (hideNavbar) return null;
 
-  const logout = () => {
-    localStorage.clear();
-    navigate('/');
-  };
+  const logout = async () => {
+  try {
+    await fetch('/api/logout', {
+      method: 'POST',
+      credentials: 'include', // 👈 Needed to send the cookie
+    });
+  } catch (err) {
+    console.error('Logout failed:', err);
+    // even if it fails, fall through to clear local state
+  }
+
+  localStorage.removeItem('accessToken');
+  navigate('/');
+};
+
+
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white text-gray-800 shadow-md font-inter">
@@ -46,7 +58,7 @@ export default function Navbar() {
             to={dashboardRoute}
             className="text-xl font-bold tracking-wide text-gray-800 hover:text-gray-600"
           >
-            📅 Meeting Room Booking App
+            📅 Meeting Room Booking
           </Link>
         </div>
 
