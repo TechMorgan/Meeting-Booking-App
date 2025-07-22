@@ -14,8 +14,11 @@ api.interceptors.request.use((config) => {
 
   let pathname = '';
   try {
-	const fullUrl = new URL(config.url, config.url.startsWith('http') ? undefined : window.location.origin);
-	pathname = fullUrl.pathname;
+    const fullUrl = new URL(
+      config.url,
+      config.url.startsWith('http') ? undefined : api.defaults.baseURL
+    );
+    pathname = fullUrl.pathname;
   } catch (e) {
     console.warn('URL parse error:', config.url);
   }
@@ -35,30 +38,49 @@ api.interceptors.response.use(
   async (err) => {
     const originalRequest = err.config;
 
-    const shouldRetry =
+    // --- Handle 401 (Token expired) ---
+    const shouldRetry401 =
       err.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url.endsWith('/refresh-token');
 
-    if (shouldRetry) {
+    if (shouldRetry401) {
       originalRequest._retry = true;
 
       try {
-        // Request new access token using refresh token
         const refreshRes = await api.post('/refresh-token');
         const newAccessToken = refreshRes.data.accessToken;
-
-        // Save to localStorage
         localStorage.setItem('accessToken', newAccessToken);
-
-        // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         console.error('🔁 Refresh token failed:', refreshError);
-        localStorage.removeItem('accessToken');
-        window.location.href = '/'; // Redirect to home or login
+
+        try {
+          await new Promise(resolve => setTimeout(resolve, 1500)); // wait 1.5s
+          const retryRefresh = await api.post('/refresh-token');
+          const retryToken = retryRefresh.data.accessToken;
+          localStorage.setItem('accessToken', retryToken);
+          originalRequest.headers.Authorization = `Bearer ${retryToken}`;
+          return api(originalRequest);
+        } catch (secondError) {
+          console.error('🔁 Retry refresh failed:', secondError);
+          localStorage.removeItem('accessToken');
+          window.location.href = '/';
+        }
       }
+    }
+
+    // --- Handle 500 (cold start, internal error) ---
+    const shouldRetry500 =
+      err.response?.status === 500 &&
+      !originalRequest._retry500;
+
+    if (shouldRetry500) {
+      originalRequest._retry500 = true;
+      console.warn('🔁 Retrying request due to 500 error (cold start suspected)...');
+      await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2s
+      return api(originalRequest);
     }
 
     return Promise.reject(err);
